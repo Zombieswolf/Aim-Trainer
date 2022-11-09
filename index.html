@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>repl.it</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+		<canvas id="ui"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r123/three.min.js"></script>
+		<script src="pointer.js"></script>
+		<script>
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.05, 1000 );
+
+			const renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setClearColor(0x00C9FF)
+			document.body.appendChild( renderer.domElement );
+
+			//const controls = new THREE.PointerLockControls(camera, document.body)
+
+			var hits = 0
+			var misses = 0
+			var size = 0.5
+
+			const geometry = new THREE.BoxGeometry();
+			const material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+			const cube = new THREE.Mesh( geometry, material );
+			cube.health = 100
+			cube.name = 'test'
+			cube.position.x = Math.floor(Math.random() * 9.5 - 4.5)
+			cube.position.z = Math.floor(Math.random() * 9.5 - 4.5)
+			cube.scale.x = 0.25
+			cube.scale.y = 0.25
+			cube.scale.z = 0.25
+			scene.add(cube);
+
+			Math.degToRad = function(deg){return deg * (Math.PI/180)}
+
+			const floor = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshLambertMaterial( { color: 0x7F6B66 }))
+			floor.name = 'Floor'
+			floor.rotation.x = Math.degToRad(-90)
+			floor.position.y = -0.5
+			floor.scale.x = 10
+			floor.scale.y = 10
+			scene.add(floor)
+
+			var walls = {}
+
+			walls.north = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshLambertMaterial( { color: 0x7F4F46 }))
+			walls.north.name = 'Wall North'
+			walls.north.rotation.z = Math.degToRad(-90)
+			walls.north.position.z = -5
+			walls.north.scale.x = 10
+			walls.north.scale.y = 10
+			scene.add(walls.north)
+
+			walls.east = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshLambertMaterial( { color: 0x7F4F46 }))
+			walls.east.name = 'Wall East'
+			walls.east.rotation.z = Math.degToRad(-90)
+			walls.east.rotation.y = Math.degToRad(-90)
+			walls.east.position.x = 5
+			walls.east.scale.x = 10
+			walls.east.scale.y = 10
+			scene.add(walls.east)
+
+			walls.west = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshLambertMaterial( { color: 0x7F4F46 }))
+			walls.west.name = 'Wall West'
+			walls.west.rotation.z = Math.degToRad(90)
+			walls.west.rotation.y = Math.degToRad(90)
+			walls.west.position.x = -5
+			walls.west.scale.x = 10
+			walls.west.scale.y = 10
+			scene.add(walls.west)
+
+			walls.south = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshLambertMaterial( { color: 0x7F4F46 }))
+			walls.south.name = 'Wall South'
+			walls.south.rotation.z = Math.degToRad(-90)
+			walls.south.rotation.y = Math.degToRad(180)
+			walls.south.position.z = 5
+			walls.south.scale.x = 10
+			walls.south.scale.y = 10
+			scene.add(walls.south)
+
+			const light = new THREE.PointLight( 0xffffff, 2.5, 100 );
+			light.position.set(0, 10, 0)
+			light.castShadows = true
+			scene.add(light)
+
+			const player = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({color:0xff0000}))
+			scene.add(player)
+
+			const raycaster = new THREE.Raycaster();
+			const mouse = new THREE.Vector2();
+
+			const ui = document.getElementById('ui')
+			ui.width = window.innerWidth
+			ui.height = window.innerHeight
+			const ctx = ui.getContext('2d')
+
+			var keys = {}
+
+			window.onresize = function(){
+				renderer.setSize(window.innerWidth, window.innerHeight);
+				ui.width = window.innerWidth
+				ui.height = window.innerHeight
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				renderer.render( scene, camera );
+				player.position.set(camera.position)
+				cube.scale.set(size, size, size)
+				if(keys.w){
+					camera.translateZ(-0.05)
+					if(camera.position.z <= -4.5 || camera.position.z >= 4.5 || camera.position.x >= 4.5 || camera.position.x <= -4.5){
+						camera.translateZ(0.05)
+					}
+				}
+				if(keys.s){
+					camera.translateZ(0.05)
+					if(camera.position.z <= -4.5 || camera.position.z >= 4.5 || camera.position.x >= 4.5 || camera.position.x <= -4.5){
+						camera.translateZ(-0.05)
+					}
+				}
+				if(keys.a){
+					camera.translateX(-0.05)
+					if(camera.position.z <= -4.5 || camera.position.z >= 4.5 || camera.position.x >= 4.5 || camera.position.x <= -4.5){
+						camera.translateX(0.05)
+					}
+				}
+				if(keys.d){
+					camera.translateX(0.05)
+					if(camera.position.z <= -4.5 || camera.position.z >= 4.5 || camera.position.x >= 4.5 || camera.position.x <= -4.5){
+						camera.translateX(-0.05)
+					}
+				}
+				ctx.clearRect(0,0,ui.width,ui.height)
+				ctx.fillStyle = 'white'
+				ctx.strokeStyle = 'black'
+				ctx.fillRect((ui.width/2)-2.5,ui.height/2-2.5,5,5)
+				ctx.strokeRect((ui.width/2)-2.5,ui.height/2-2.5,5,5)
+				ctx.font = '25px Arial'
+				ctx.fillText(`Hits: ${hits}  Misses: ${misses}`, 10, 25)
+				ctx.strokeText(`Hits: ${hits}  Misses: ${misses}`, 10, 25)
+				ctx.fillText(`Cube size: ${size}`, 10, 55)
+				ctx.strokeText(`Cube size: ${size}`, 10, 55)
+				ctx.fillText(`Press - or + to scale the cube.`, 10, 85)
+				ctx.strokeText(`Press - or + to scale the cube.`, 10, 85)
+			}
+			animate();
+
+			window.onkeydown = function(e){
+				keys[e.key] = true
+				if(e.key == '=' || e.key == '+'){
+					size += 0.125
+					if(size > 2){
+						size = 2
+					}
+				}
+				if(e.key == '-'){
+					size -= 0.125
+					if(size < 0.125){
+						size = 0.125
+					}
+				}
+			}
+			window.onkeyup = function(e){
+				keys[e.key] = false
+			}
+			document.oncontextmenu = function(){
+				return false
+			}
+			document.onmousedown = function(e){
+				document.body.requestPointerLock()
+				raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+				const intersects = raycaster.intersectObjects( scene.children );
+				if(intersects.length > 0){
+					if(intersects[0].object.name == 'Floor' || intersects[0].object.name.startsWith('Wall')){
+						misses++
+						return
+					}
+					var color_save = JSON.parse(JSON.stringify(intersects[0].object.material.color))
+					hits++
+					intersects[0].object.material.color.set( 0xff0000 );
+					intersects[0].object.health -= 20
+					if(intersects[0].object.health <= 0){
+						cube.position.x = Math.floor(Math.random() * 9.5 - 4.5)
+						cube.position.z = Math.floor(Math.random() * 9.5 - 4.5)
+						intersects[0].object.health = 100
+					}
+					setTimeout(function(){intersects[0].object.material.color.set(color_save)},100)
+				}
+			}
+			document.onmousemove = function(e){
+				//camera.rotation.x -= e.movementY / 150
+				camera.rotation.y -= e.movementX / 200
+			}
+		</script>
+		<style>
+			canvas{
+				position: absolute;
+				left: 0px;
+				top: 0px;
+			}
+			#ui{
+				z-index: 10;
+			}
+			#size{
+				position: absolute;
+				top: 30px;
+				z-index: 15;
+			}
+		</style>
+  </body>
+</html>
